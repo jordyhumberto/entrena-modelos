@@ -48,6 +48,22 @@ flowchart LR
 
 Detalle de tecnologías, pendientes y ramas en [PLAN.md](PLAN.md).
 
+## Estructura del repositorio
+
+```
+client/      Cliente web (React)
+services/    Microservicios: gateway, datasets-service, training-service, inference-service
+infra/       Docker Compose con RabbitMQ y MinIO
+```
+
+Para levantar la infraestructura compartida:
+
+```bash
+cd infra
+cp .env.example .env   # y cambia las contraseñas
+docker compose up -d
+```
+
 ## Estado del proyecto
 
 Fase inicial: definición de objetivos y arquitectura. La tecnología y el plan de desarrollo se documentarán en `PLAN.md`.

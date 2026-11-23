@@ -70,8 +70,8 @@ flowchart LR
 ## 6. Lista de pendientes
 
 **Base**
-- [ ] Estructura de carpetas (`services/`, `client/`, `infra/`) y `.gitignore`
-- [ ] Docker Compose con RabbitMQ y MinIO
+- [x] Estructura de carpetas (`services/`, `client/`, `infra/`) y `.gitignore`
+- [x] Docker Compose con RabbitMQ y MinIO (`infra/docker-compose.yml`)
 
 **gateway**
 - [ ] Servicio FastAPI con enrutado hacia los otros servicios
