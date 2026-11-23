@@ -46,7 +46,7 @@ flowchart LR
 |---|---|
 | Cliente | React + Vite + TypeScript |
 | Servicios | Python + FastAPI |
-| Bases de datos | Una por servicio: SQLite al inicio, PostgreSQL después |
+| Bases de datos | PostgreSQL, una por servicio (SQLite no sirve con varias copias de un servicio) |
 | Mensajería | RabbitMQ |
 | Archivos | MinIO |
 | ML clásico (CPU) | scikit-learn (TF-IDF + regresión logística) |
@@ -122,13 +122,13 @@ Una rama por tarea, mergeada a `main`, con prefijos de tipo (`docs/`, `chore/`, 
 ### Fase 1: funciona en una máquina normal
 Todo corre en local (Docker Compose o procesos sueltos), sin cuentas ni costos en la nube.
 
-### Fase 2: lista para AWS
+### Fase 2: lista para AWS (ECS Fargate)
 Se despliega en servicios de AWS. Para que el salto sea sencillo, **la fase 1 se diseña ya pensando en ella**:
 
 | Principio (aplica desde la fase 1) | Fase 1 (local) | Fase 2 (AWS) |
 |---|---|---|
 | Archivos mediante el protocolo S3, siempre detrás de una interfaz de almacenamiento | MinIO | Amazon S3 (solo cambian URL y credenciales) |
-| Base de datos con SQLAlchemy y la URL en una variable de entorno | SQLite o PostgreSQL en Docker | Amazon RDS (PostgreSQL) |
+| Base de datos con SQLAlchemy y la URL en una variable de entorno | PostgreSQL en Docker | Amazon RDS (PostgreSQL) |
 | Mensajería detrás de una interfaz de publicación y consumo | RabbitMQ en Docker | Amazon MQ (RabbitMQ gestionado) o SQS |
 | Un contenedor por servicio, configurado solo por variables de entorno | Docker Compose | ECS con Fargate |
 | Entrada única con rutas por prefijo | gateway | Application Load Balancer o API Gateway |
@@ -142,7 +142,21 @@ Reglas para no cerrarnos puertas:
 - Ningún servicio lee la base de datos de otro.
 - Los servicios no guardan estado propio: se pueden apagar y volver a levantar sin perder nada.
 
-## 9. Decisiones pendientes
+### Fase 3: Kubernetes
+Opcional y con fines de aprendizaje. Se prueba primero en local (`k3d` o `kind`) y después, si se quiere, en AWS con EKS. Como los servicios ya cumplen las reglas de la fase 2, solo hay que escribir los archivos de despliegue (Deployments, Services, Ingress, HPA); el código no cambia.
 
-1. SQLite o PostgreSQL desde el inicio.
-2. Si los archivos se guardan en MinIO desde la primera rama de datasets, o en una carpeta local detrás de la interfaz de almacenamiento y MinIO después.
+## 9. Escalado horizontal
+
+El sistema debe crecer agregando copias de un servicio, no agrandando una máquina.
+
+- Cada servicio puede tener varias copias detrás del gateway o de un balanceador.
+- **PostgreSQL** desde el inicio: SQLite es un archivo local y no soporta varias copias escribiendo.
+- **Varios workers sobre la misma cola**: RabbitMQ entrega cada entrenamiento a un solo worker. Un trabajo nunca debe ejecutarse a la vez en dos workers.
+- **Mensajes repetidos**: cada consumidor debe ser idempotente (procesar dos veces el mismo mensaje no rompe nada).
+- **Inferencia**: cada copia carga el modelo desde MinIO/S3 a su memoria y se entera de modelos nuevos por el evento de RabbitMQ.
+- **GPU**: cada worker con GPU necesita la suya. En local se prueba el reparto con workers de CPU; en la nube se escalan máquinas con GPU.
+- Prueba de la fase 1: levantar 2 copias de `training-service` (`docker compose up --scale`) y comprobar que se reparten los entrenamientos.
+
+## 10. Decisiones pendientes
+
+1. Si los archivos se guardan en MinIO desde la primera rama de datasets, o en una carpeta local detrás de la interfaz de almacenamiento y MinIO después.
