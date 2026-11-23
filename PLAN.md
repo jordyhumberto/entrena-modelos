@@ -52,7 +52,8 @@ flowchart LR
 | ML clásico (CPU) | scikit-learn (TF-IDF + regresión logística) |
 | ML profundo (GPU/CPU) | PyTorch + Hugging Face Transformers |
 | Dispositivo | `torch.cuda.is_available()`: GPU si existe, CPU si no; se puede forzar CPU |
-| Orquestación local | Docker Compose |
+| Orquestación local | Docker Compose (fase 1) y `k3d` (fase 3) |
+| Infraestructura como código | Terraform (fases 2 y 4) |
 
 ## 4. Responsabilidades
 
@@ -122,9 +123,9 @@ Una rama por tarea, mergeada a `main`, con prefijos de tipo (`docs/`, `chore/`, 
 | Fase | Qué se hace | Qué se aprende |
 |---|---|---|
 | 1 | Docker Compose en una máquina normal | Microservicios, colas, entrenamiento, GPU local |
-| 2 | AWS con ECS Fargate | Nube, S3, RDS, balanceador, secretos |
-| 3 | Kubernetes en local (`k3d` o `kind`) | Conceptos de Kubernetes sin costo ni riesgo |
-| 4 | Kubernetes en AWS con EKS | Kubernetes real, escalado automático y GPU en la nube |
+| 2 | AWS con ECS Fargate, infraestructura con Terraform | Nube, S3, RDS, balanceador, secretos |
+| 3 | Kubernetes en local con `k3d` | Conceptos de Kubernetes sin costo ni riesgo |
+| 4 | Kubernetes en AWS con EKS, infraestructura con Terraform | Kubernetes real, escalado automático y GPU en la nube |
 
 Cada fase añade una sola cosa nueva respecto a la anterior.
 
@@ -132,7 +133,7 @@ Cada fase añade una sola cosa nueva respecto a la anterior.
 Todo corre en local (Docker Compose o procesos sueltos), sin cuentas ni costos en la nube.
 
 ### Fase 2: lista para AWS (ECS Fargate)
-Se despliega en servicios de AWS. Para que el salto sea sencillo, **la fase 1 se diseña ya pensando en ella**:
+Se despliega en servicios de AWS, y la infraestructura se describe con Terraform. Para que el salto sea sencillo, **la fase 1 se diseña ya pensando en ella**:
 
 | Principio (aplica desde la fase 1) | Fase 1 (local) | Fase 2 (AWS) |
 |---|---|---|
@@ -152,12 +153,12 @@ Reglas para no cerrarnos puertas:
 - Los servicios no guardan estado propio: se pueden apagar y volver a levantar sin perder nada.
 
 ### Fase 3: Kubernetes en local
-Opcional y con fines de aprendizaje. Se prueba en local con `k3d` o `kind`, sin costo. Como los servicios ya cumplen las reglas de la fase 2, solo hay que escribir los archivos de despliegue (Deployments, Services, Ingress, HPA); el código no cambia.
+Opcional y con fines de aprendizaje. Se prueba en local con `k3d` (más ligero que `kind` y fácil de exponer al navegador), sin costo. Se instala el mismo controlador de entrada que se usará en EKS (ingress-nginx) en lugar del Traefik que trae K3s. Como los servicios ya cumplen las reglas de la fase 2, solo hay que escribir los archivos de despliegue (Deployments, Services, Ingress, HPA); el código no cambia.
 
 ### Fase 4: Kubernetes en AWS (EKS)
 Se llevan a EKS los archivos de despliegue de la fase 3. Lo nuevo es la parte de AWS: el clúster, el balanceador, el acceso a S3 y RDS y los nodos con GPU. Se reutilizan los servicios de AWS aprendidos en la fase 2.
 
-- **Infraestructura como código** (Terraform o `eksctl`): el clúster se crea y se destruye con un comando.
+- **Infraestructura como código** con Terraform (la misma herramienta de la fase 2): el clúster se crea y se destruye con un comando.
 - **Costos**: EKS cobra por el clúster aunque no tenga tráfico (del orden de 70 USD al mes; verificar el precio vigente) más las máquinas, y las de GPU son las más caras. Crear el clúster, probar y **destruirlo el mismo día**.
 - **Alertas de presupuesto** en AWS activadas desde la fase 2, antes de crear ningún recurso de pago.
 
@@ -173,6 +174,15 @@ El sistema debe crecer agregando copias de un servicio, no agrandando una máqui
 - **GPU**: cada worker con GPU necesita la suya. En local se prueba el reparto con workers de CPU; en la nube se escalan máquinas con GPU.
 - Prueba de la fase 1: levantar 2 copias de `training-service` (`docker compose up --scale`) y comprobar que se reparten los entrenamientos.
 
-## 10. Decisiones pendientes
+## 10. Para explorar en el futuro
+
+Alternativas que se descartaron por ahora para no repetir trabajo, pero que se quieren probar más adelante:
+
+- **`kind`** en lugar de `k3d`: Kubernetes estándar, el mismo que usa EKS. Sirve para comparar y notar las diferencias.
+- **`eksctl`** en lugar de Terraform: la herramienta de línea de comandos específica de EKS, más rápida para crear solo el clúster.
+- **OpenTofu**: versión de código abierto de Terraform con el mismo funcionamiento.
+- **Kubernetes integrado de Docker Desktop**: opción de un solo nodo, sin instalar nada extra.
+
+## 11. Decisiones pendientes
 
 1. Si los archivos se guardan en MinIO desde la primera rama de datasets, o en una carpeta local detrás de la interfaz de almacenamiento y MinIO después.
