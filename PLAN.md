@@ -117,7 +117,32 @@ Una rama por tarea, mergeada a `main`, con prefijos de tipo (`docs/`, `chore/`, 
 | `feat/client-base` | Cliente y pantallas |
 | `feat/entrenamiento-gpu` | Transformers y selección CPU/GPU |
 
-## 8. Decisiones pendientes
+## 8. Fases
 
-1. Nombre y visibilidad (público o privado) del repositorio en GitHub.
-2. SQLite o PostgreSQL desde el inicio.
+### Fase 1: funciona en una máquina normal
+Todo corre en local (Docker Compose o procesos sueltos), sin cuentas ni costos en la nube.
+
+### Fase 2: lista para AWS
+Se despliega en servicios de AWS. Para que el salto sea sencillo, **la fase 1 se diseña ya pensando en ella**:
+
+| Principio (aplica desde la fase 1) | Fase 1 (local) | Fase 2 (AWS) |
+|---|---|---|
+| Archivos mediante el protocolo S3, siempre detrás de una interfaz de almacenamiento | MinIO | Amazon S3 (solo cambian URL y credenciales) |
+| Base de datos con SQLAlchemy y la URL en una variable de entorno | SQLite o PostgreSQL en Docker | Amazon RDS (PostgreSQL) |
+| Mensajería detrás de una interfaz de publicación y consumo | RabbitMQ en Docker | Amazon MQ (RabbitMQ gestionado) o SQS |
+| Un contenedor por servicio, configurado solo por variables de entorno | Docker Compose | ECS con Fargate |
+| Entrada única con rutas por prefijo | gateway | Application Load Balancer o API Gateway |
+| Entrenamiento con GPU en un contenedor separado | Tu RTX 4050 | EC2 con GPU o SageMaker |
+| Cliente web estático | Servidor de desarrollo | S3 + CloudFront |
+| Secretos fuera del código | Archivo `.env` | Secrets Manager |
+
+Reglas para no cerrarnos puertas:
+- Ningún servicio escribe en rutas del disco local: todo archivo va por la interfaz de almacenamiento.
+- Ninguna dirección, usuario o contraseña va escrito en el código: todo sale de variables de entorno.
+- Ningún servicio lee la base de datos de otro.
+- Los servicios no guardan estado propio: se pueden apagar y volver a levantar sin perder nada.
+
+## 9. Decisiones pendientes
+
+1. SQLite o PostgreSQL desde el inicio.
+2. Si los archivos se guardan en MinIO desde la primera rama de datasets, o en una carpeta local detrás de la interfaz de almacenamiento y MinIO después.
