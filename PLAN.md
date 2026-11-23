@@ -74,7 +74,7 @@ flowchart LR
 - [x] Docker Compose con RabbitMQ y MinIO (`infra/docker-compose.yml`)
 
 **gateway**
-- [ ] Servicio FastAPI con enrutado hacia los otros servicios
+- [x] Servicio FastAPI con enrutado hacia los otros servicios (`services/gateway`)
 
 **datasets-service**
 - [ ] Subida y validación de CSV
