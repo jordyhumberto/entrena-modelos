@@ -119,6 +119,15 @@ Una rama por tarea, mergeada a `main`, con prefijos de tipo (`docs/`, `chore/`, 
 
 ## 8. Fases
 
+| Fase | Qué se hace | Qué se aprende |
+|---|---|---|
+| 1 | Docker Compose en una máquina normal | Microservicios, colas, entrenamiento, GPU local |
+| 2 | AWS con ECS Fargate | Nube, S3, RDS, balanceador, secretos |
+| 3 | Kubernetes en local (`k3d` o `kind`) | Conceptos de Kubernetes sin costo ni riesgo |
+| 4 | Kubernetes en AWS con EKS | Kubernetes real, escalado automático y GPU en la nube |
+
+Cada fase añade una sola cosa nueva respecto a la anterior.
+
 ### Fase 1: funciona en una máquina normal
 Todo corre en local (Docker Compose o procesos sueltos), sin cuentas ni costos en la nube.
 
@@ -142,8 +151,15 @@ Reglas para no cerrarnos puertas:
 - Ningún servicio lee la base de datos de otro.
 - Los servicios no guardan estado propio: se pueden apagar y volver a levantar sin perder nada.
 
-### Fase 3: Kubernetes
-Opcional y con fines de aprendizaje. Se prueba primero en local (`k3d` o `kind`) y después, si se quiere, en AWS con EKS. Como los servicios ya cumplen las reglas de la fase 2, solo hay que escribir los archivos de despliegue (Deployments, Services, Ingress, HPA); el código no cambia.
+### Fase 3: Kubernetes en local
+Opcional y con fines de aprendizaje. Se prueba en local con `k3d` o `kind`, sin costo. Como los servicios ya cumplen las reglas de la fase 2, solo hay que escribir los archivos de despliegue (Deployments, Services, Ingress, HPA); el código no cambia.
+
+### Fase 4: Kubernetes en AWS (EKS)
+Se llevan a EKS los archivos de despliegue de la fase 3. Lo nuevo es la parte de AWS: el clúster, el balanceador, el acceso a S3 y RDS y los nodos con GPU. Se reutilizan los servicios de AWS aprendidos en la fase 2.
+
+- **Infraestructura como código** (Terraform o `eksctl`): el clúster se crea y se destruye con un comando.
+- **Costos**: EKS cobra por el clúster aunque no tenga tráfico (del orden de 70 USD al mes; verificar el precio vigente) más las máquinas, y las de GPU son las más caras. Crear el clúster, probar y **destruirlo el mismo día**.
+- **Alertas de presupuesto** en AWS activadas desde la fase 2, antes de crear ningún recurso de pago.
 
 ## 9. Escalado horizontal
 
